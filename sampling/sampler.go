@@ -1,6 +1,6 @@
 package sampling
 
-import "github.com/heucuva/gomixing/v1/volume"
+import "github.com/heucuva/gomixing/volume"
 
 // Sampler is an interface to the sampling system
 type Sampler interface {

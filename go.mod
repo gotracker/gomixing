@@ -1,3 +1,3 @@
-module github.com/heucuva/gomixing/v1
+module github.com/heucuva/gomixing
 
 go 1.15

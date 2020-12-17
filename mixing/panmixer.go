@@ -3,8 +3,8 @@ package mixing
 import (
 	"math"
 
-	"github.com/heucuva/gomixing/v1/panning"
-	"github.com/heucuva/gomixing/v1/volume"
+	"github.com/heucuva/gomixing/panning"
+	"github.com/heucuva/gomixing/volume"
 )
 
 // PanMixer is a mixer that's specialized for mixing multichannel audio content
