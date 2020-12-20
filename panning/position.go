@@ -24,7 +24,7 @@ func MakeStereoPosition(value float32, leftValue float32, rightValue float32) Po
 	t := (d - float64(value)) / d
 	prad := t * math.Pi
 
-	return panning.Position{
+	return Position{
 		Angle:    float32(prad),
 		Distance: 1.0,
 	}
