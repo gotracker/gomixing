@@ -12,8 +12,20 @@ type Position struct {
 
 var (
 	// CenterAhead is the position directly ahead of the listener
-	CenterAhead = Position{
-		Angle:    float32(math.Pi / 2.0),
-		Distance: float32(1.0),
-	}
+	CenterAhead = MakeStereoPosition(0.5, 0, 1)
 )
+
+// MakeStereoPosition creates a stereo panning position based on a linear interpolation between `leftValue` and `RightValue`
+func MakeStereoPosition(value float32, leftValue float32, rightValue float32) Position {
+	if leftValue == rightValue {
+		return CenterAhead
+	}
+	d := float64(rightValue - leftValue)
+	t := (d - float64(value)) / d
+	prad := t * math.Pi
+
+	return panning.Position{
+		Angle:    float32(prad),
+		Distance: 1.0,
+	}
+}
