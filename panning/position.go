@@ -18,7 +18,7 @@ var (
 // MakeStereoPosition creates a stereo panning position based on a linear interpolation between `leftValue` and `RightValue`
 func MakeStereoPosition(value float32, leftValue float32, rightValue float32) Position {
 	if leftValue == rightValue {
-		return CenterAhead
+		panic("leftValue and rightValue should be distinct")
 	}
 	d := float64(rightValue - leftValue)
 	t := (d - float64(value)) / d
