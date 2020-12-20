@@ -22,7 +22,8 @@ func MakeStereoPosition(value float32, leftValue float32, rightValue float32) Po
 	}
 	d := float64(rightValue - leftValue)
 	t := (d - float64(value)) / d
-	prad := t * math.Pi
+	// we're using a 2d rotation matrix to calcuate the left and right channels, so we really want the half angle
+	prad := t * math.Pi / 2.0
 
 	return Position{
 		Angle:    float32(prad),
