@@ -1,8 +1,8 @@
 package mixing
 
 import (
-	"github.com/heucuva/gomixing/panning"
-	"github.com/heucuva/gomixing/volume"
+	"github.com/gotracker/gomixing/panning"
+	"github.com/gotracker/gomixing/volume"
 )
 
 // Data is a single buffer of data at a specific panning position

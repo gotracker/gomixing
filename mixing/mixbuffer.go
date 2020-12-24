@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/heucuva/gomixing/sampling"
-	"github.com/heucuva/gomixing/volume"
+	"github.com/gotracker/gomixing/sampling"
+	"github.com/gotracker/gomixing/volume"
 )
 
 // ChannelMixBuffer is a single channel's premixed volume data
