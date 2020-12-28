@@ -80,12 +80,11 @@ func (m *MixBuffer) Add(pos int, rhs MixBuffer, volMtx volume.Matrix) {
 
 // ToRenderData converts a mixbuffer into a byte stream intended to be
 // output to the output sound device
-func (m *MixBuffer) ToRenderData(samples int, bitsPerSample int, mixedChannels int) []byte {
+func (m *MixBuffer) ToRenderData(samples int, bitsPerSample int, mixerVolume volume.Volume) []byte {
 	writer := &bytes.Buffer{}
-	samplePostMultiply := 1.0 / volume.Volume(mixedChannels)
 	for i := 0; i < samples; i++ {
 		for _, buf := range *m {
-			v := buf[i] * samplePostMultiply
+			v := buf[i] * mixerVolume
 			val := v.ToSample(bitsPerSample)
 			binary.Write(writer, binary.LittleEndian, val)
 		}
@@ -95,15 +94,14 @@ func (m *MixBuffer) ToRenderData(samples int, bitsPerSample int, mixedChannels i
 
 // ToIntStream converts a mixbuffer into an int stream intended to be
 // output to the output sound device
-func (m *MixBuffer) ToIntStream(outputChannels int, samples int, bitsPerSample int, mixedChannels int) [][]int32 {
+func (m *MixBuffer) ToIntStream(outputChannels int, samples int, bitsPerSample int, mixerVolume volume.Volume) [][]int32 {
 	data := make([][]int32, outputChannels)
 	for c := range data {
 		data[c] = make([]int32, samples)
 	}
-	samplePostMultiply := 1.0 / volume.Volume(mixedChannels)
 	for i := 0; i < samples; i++ {
 		for c, buf := range *m {
-			v := buf[i] * samplePostMultiply
+			v := buf[i] * mixerVolume
 			data[c][i] = v.ToIntSample(bitsPerSample)
 		}
 	}
@@ -112,11 +110,10 @@ func (m *MixBuffer) ToIntStream(outputChannels int, samples int, bitsPerSample i
 
 // ToRenderDataWithBufs converts a mixbuffer into a byte stream intended to be
 // output to the output sound device
-func (m *MixBuffer) ToRenderDataWithBufs(outBuffers [][]byte, samples int, bitsPerSample int, mixedChannels int) {
+func (m *MixBuffer) ToRenderDataWithBufs(outBuffers [][]byte, samples int, bitsPerSample int, mixerVolume volume.Volume) {
 	pos := 0
 	onum := 0
 	out := outBuffers[onum]
-	samplePostMultiply := 1.0 / volume.Volume(mixedChannels)
 	for i := 0; i < samples; i++ {
 		for _, buf := range *m {
 			if pos >= len(out) {
@@ -127,7 +124,7 @@ func (m *MixBuffer) ToRenderDataWithBufs(outBuffers [][]byte, samples int, bitsP
 				out = outBuffers[onum]
 				pos = 0
 			}
-			v := buf[i] * samplePostMultiply
+			v := buf[i] * mixerVolume
 			val := v.ToSample(bitsPerSample)
 			switch d := val.(type) {
 			case int8:
