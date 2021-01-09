@@ -30,3 +30,16 @@ func MakeStereoPosition(value float32, leftValue float32, rightValue float32) Po
 		Distance: 1.0,
 	}
 }
+
+// FromStereoPosition inverts a stereo panning position into a linear interpolation value between `leftValue` and `RightValue`
+func FromStereoPosition(pos Position, leftValue float32, rightValue float32) float32 {
+	if leftValue == rightValue {
+		panic("leftValue and rightValue should be distinct")
+	}
+	prad := pos.Angle
+	t := float64(prad*2.0) / math.Pi
+	d := float64(rightValue - leftValue)
+	value := d - (t * d)
+
+	return float32(value)
+}
