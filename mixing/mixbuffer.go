@@ -54,7 +54,7 @@ func (m *MixBuffer) MixInSample(d SampleMixIn) {
 	pos := d.MixPos
 	for i := 0; i < d.MixLen; i++ {
 		sdata := d.Sample.GetSample()
-		samp := d.StaticVol.Apply(sdata...)
+		samp := sdata.ApplyInSitu(d.StaticVol)
 		mixed := d.VolMatrix.Apply(samp...)
 		for c, s := range mixed {
 			(*m)[c][pos] += s

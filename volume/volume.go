@@ -62,15 +62,32 @@ func (v Volume) Apply(samp ...Volume) Matrix {
 	return o
 }
 
-// Apply takes a volume matrix and multiplies it my incoming volumes
+// Apply takes a volume matrix and multiplies it by incoming volumes
 func (m Matrix) Apply(samp ...Volume) Matrix {
 	o := make(Matrix, len(m))
-	for _, s := range samp {
-		for i, v := range s.Apply(m...) {
-			o[i] += v
-		}
+	v := Matrix(samp).Sum()
+	for i, s := range v.Apply(m...) {
+		o[i] = s
 	}
 	return o
+}
+
+// ApplyInSitu takes a volume matrix and multiplies it by incoming volumes
+func (m Matrix) ApplyInSitu(samp ...Volume) Matrix {
+	v := Matrix(samp).Sum()
+	for i, s := range v.Apply(m...) {
+		m[i] = s
+	}
+	return m
+}
+
+// Sum sums all the elements of the Matrix and returns the resulting Volume
+func (m Matrix) Sum() Volume {
+	var v Volume
+	for _, s := range m {
+		v += s
+	}
+	return v
 }
 
 func (v Volume) withOverflowProtection() float64 {
