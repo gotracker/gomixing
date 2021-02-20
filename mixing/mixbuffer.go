@@ -116,7 +116,7 @@ func (m *MixBuffer) ToRenderDataWithBufs(outBuffers [][]byte, samples int, bitsP
 	out := outBuffers[onum]
 	for i := 0; i < samples; i++ {
 		for _, buf := range *m {
-			if pos >= len(out) {
+			for pos >= len(out) {
 				onum++
 				if onum > len(outBuffers) {
 					return
