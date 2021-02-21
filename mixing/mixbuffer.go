@@ -30,15 +30,8 @@ type MixBuffer []ChannelMixBuffer
 func (m *MixBuffer) C() (chan<- SampleMixIn, func()) {
 	ch := make(chan SampleMixIn, 32)
 	go func() {
-	outerLoop:
-		for {
-			select {
-			case d, ok := <-ch:
-				if !ok {
-					break outerLoop
-				}
-				m.MixInSample(d)
-			}
+		for d := range ch {
+			m.MixInSample(d)
 		}
 	}()
 	return ch, func() {
@@ -86,7 +79,7 @@ func (m *MixBuffer) ToRenderData(samples int, bitsPerSample int, mixerVolume vol
 		for _, buf := range *m {
 			v := buf[i] * mixerVolume
 			val := v.ToSample(bitsPerSample)
-			binary.Write(writer, binary.LittleEndian, val)
+			_ = binary.Write(writer, binary.LittleEndian, val) // lint
 		}
 	}
 	return writer.Bytes()
@@ -138,7 +131,7 @@ func (m *MixBuffer) ToRenderDataWithBufs(outBuffers [][]byte, samples int, bitsP
 				pos += 4
 			default:
 				writer := &bytes.Buffer{}
-				binary.Write(writer, binary.LittleEndian, val)
+				_ = binary.Write(writer, binary.LittleEndian, val) // lint
 				pos += copy(out[pos:], writer.Bytes())
 			}
 		}

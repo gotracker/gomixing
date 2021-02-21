@@ -43,9 +43,13 @@ type panMixerStereo struct {
 
 func (p panMixerStereo) GetMixingMatrix(pan panning.Position) volume.Matrix {
 	pangle := float64(pan.Angle)
-	d := volume.Volume(pan.Distance)
-	l := d * volume.Volume(math.Cos(pangle))
-	r := d * volume.Volume(math.Sin(pangle))
+	s, c := math.Sincos(pangle)
+	var d volume.Volume
+	if pan.Distance > 0 {
+		d = 1 / volume.Volume(pan.Distance*pan.Distance)
+	}
+	l := d * volume.Volume(s)
+	r := d * volume.Volume(c)
 	return volume.Matrix{l, r}
 }
 
@@ -59,11 +63,16 @@ type panMixerQuad struct {
 
 func (p panMixerQuad) GetMixingMatrix(pan panning.Position) volume.Matrix {
 	pangle := float64(pan.Angle)
-	d := volume.Volume(pan.Distance)
-	lf := d * volume.Volume(math.Cos(pangle))
-	rf := d * volume.Volume(math.Sin(pangle))
-	lr := d * volume.Volume(math.Sin(pangle+math.Pi/2.0))
-	rr := d * volume.Volume(math.Cos(pangle-math.Pi/2.0))
+	sf, cf := math.Sincos(pangle)
+	sr, cr := math.Sin(pangle+math.Pi/2.0), math.Cos(pangle-math.Pi/2.0)
+	var d volume.Volume
+	if pan.Distance > 0 {
+		d = 1 / volume.Volume(pan.Distance*pan.Distance)
+	}
+	lf := d * volume.Volume(sf)
+	rf := d * volume.Volume(cf)
+	lr := d * volume.Volume(cr)
+	rr := d * volume.Volume(sr)
 	return volume.Matrix{lf, rf, lr, rr}
 }
 
