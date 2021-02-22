@@ -21,9 +21,9 @@ func MakeStereoPosition(value float32, leftValue float32, rightValue float32) Po
 		panic("leftValue and rightValue should be distinct")
 	}
 	d := float64(rightValue - leftValue)
-	t := (d - float64(value)) / d
+	t := float64(value-leftValue) / d
 	// we're using a 2d rotation matrix to calcuate the left and right channels, so we really want the half angle
-	prad := t * math.Pi / 2.0
+	prad := (1 - t) * math.Pi / 2.0
 
 	return Position{
 		Angle:    float32(prad),
@@ -37,9 +37,6 @@ func FromStereoPosition(pos Position, leftValue float32, rightValue float32) flo
 		panic("leftValue and rightValue should be distinct")
 	}
 	prad := pos.Angle
-	t := float64(prad*2.0) / math.Pi
-	d := float64(rightValue - leftValue)
-	value := d - (t * d)
-
-	return float32(value)
+	t := 1 - (float64(prad*2.0) / math.Pi)
+	return leftValue + float32(t)*(rightValue-leftValue)
 }
