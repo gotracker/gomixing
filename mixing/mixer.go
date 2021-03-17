@@ -68,16 +68,20 @@ func (m *Mixer) FlattenTo(resultBuffers [][]byte, panmixer PanMixer, samplesLen 
 	data := m.NewMixBuffer(samplesLen)
 	for _, rdata := range row {
 		pos := 0
+		maxLen := 0
 		for _, cdata := range rdata {
 			if cdata.Flush != nil {
 				cdata.Flush()
+			}
+			if maxLen < cdata.SamplesLen {
+				maxLen = cdata.SamplesLen
 			}
 			if len(cdata.Data) > 0 {
 				volMtx := cdata.Volume.Apply(panmixer.GetMixingMatrix(cdata.Pan)...)
 				data.Add(pos, cdata.Data, volMtx)
 			}
-			pos += cdata.SamplesLen
 		}
+		pos += maxLen
 	}
 	data.ToRenderDataWithBufs(resultBuffers, samplesLen, m.BitsPerSample, mixerVolume)
 }
