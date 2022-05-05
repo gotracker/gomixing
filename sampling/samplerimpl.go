@@ -19,7 +19,7 @@ func (s *sampler) Advance() {
 
 func (s *sampler) GetSample() volume.Matrix {
 	if s.ss == nil {
-		return nil
+		return volume.Matrix{}
 	}
 	return s.ss.GetSample(s.pos)
 }

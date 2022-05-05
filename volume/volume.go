@@ -1,6 +1,8 @@
 package volume
 
-import "math"
+import (
+	"math"
+)
 
 // Volume is a mixable volume
 type Volume float32
@@ -10,9 +12,6 @@ var (
 	// This is useful for trackers and other musical applications
 	VolumeUseInstVol = Volume(math.Inf(-1))
 )
-
-// Matrix is an array of Volumes
-type Matrix []Volume
 
 // Int24 is an approximation of a 24-bit integer
 type Int24 struct {
@@ -53,41 +52,18 @@ func (v Volume) ToIntSample(bitsPerSample int) int32 {
 	return 0
 }
 
-// Apply multiplies the volume to 0..n samples, then returns an array of the results
-func (v Volume) Apply(samp ...Volume) Matrix {
-	o := make(Matrix, len(samp))
+// Apply multiplies the volume to 1 sample, then returns the results
+func (v Volume) ApplySingle(samp Volume) Volume {
+	return samp * v
+}
+
+// Apply multiplies the volume to 1 sample, then returns the results
+func (v Volume) ApplyMultiple(samp []Volume) []Volume {
+	vols := make([]Volume, len(samp))
 	for i, s := range samp {
-		o[i] = s * v
+		vols[i] = s.ApplySingle(v)
 	}
-	return o
-}
-
-// Apply takes a volume matrix and multiplies it by incoming volumes
-func (m Matrix) Apply(samp ...Volume) Matrix {
-	o := make(Matrix, len(m))
-	v := Matrix(samp).Sum()
-	for i, s := range v.Apply(m...) {
-		o[i] = s
-	}
-	return o
-}
-
-// ApplyInSitu takes a volume matrix and multiplies it by incoming volumes
-func (m Matrix) ApplyInSitu(samp ...Volume) Matrix {
-	v := Matrix(samp).Sum()
-	for i, s := range v.Apply(m...) {
-		m[i] = s
-	}
-	return m
-}
-
-// Sum sums all the elements of the Matrix and returns the resulting Volume
-func (m Matrix) Sum() Volume {
-	var v Volume
-	for _, s := range m {
-		v += s
-	}
-	return v
+	return vols
 }
 
 func (v Volume) withOverflowProtection() float64 {
