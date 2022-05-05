@@ -11,11 +11,7 @@ type Mixer struct {
 // NewMixBuffer returns a mixer buffer with a number of channels
 // of preallocated sample data
 func (m *Mixer) NewMixBuffer(samples int) MixBuffer {
-	mb := make(MixBuffer, m.Channels)
-	for i := range mb {
-		mb[i] = make(ChannelMixBuffer, samples)
-	}
-	return mb
+	return make(MixBuffer, samples)
 }
 
 // GetDefaultMixerVolume returns the default mixer volume value based on the number of mixed channels
@@ -34,13 +30,13 @@ func (m *Mixer) Flatten(panmixer PanMixer, samplesLen int, row []ChannelData, mi
 				cdata.Flush()
 			}
 			if len(cdata.Data) > 0 {
-				volMtx := cdata.Volume.Apply(panmixer.GetMixingMatrix(cdata.Pan)...)
-				data.Add(pos, cdata.Data, volMtx)
+				volMtx := panmixer.GetMixingMatrix(cdata.Pan).Apply(cdata.Volume)
+				data.Add(pos, &cdata.Data, volMtx)
 			}
 			pos += cdata.SamplesLen
 		}
 	}
-	return data.ToRenderData(samplesLen, m.BitsPerSample, mixerVolume)
+	return data.ToRenderData(samplesLen, m.BitsPerSample, m.Channels, mixerVolume)
 }
 
 // FlattenToInts runs a flatten on the channel data into separate channel data of int32 variety
@@ -54,13 +50,13 @@ func (m *Mixer) FlattenToInts(panmixer PanMixer, samplesLen int, row []ChannelDa
 				cdata.Flush()
 			}
 			if len(cdata.Data) > 0 {
-				volMtx := cdata.Volume.Apply(panmixer.GetMixingMatrix(cdata.Pan)...)
-				data.Add(pos, cdata.Data, volMtx)
+				volMtx := panmixer.GetMixingMatrix(cdata.Pan).Apply(cdata.Volume)
+				data.Add(pos, &cdata.Data, volMtx)
 			}
 			pos += cdata.SamplesLen
 		}
 	}
-	return data.ToIntStream(panmixer.Channels(), samplesLen, m.BitsPerSample, mixerVolume)
+	return data.ToIntStream(panmixer.NumChannels(), samplesLen, m.BitsPerSample, mixerVolume)
 }
 
 // FlattenTo will to a final saturation mix of all the row's channel data into a single output buffer
@@ -77,8 +73,8 @@ func (m *Mixer) FlattenTo(resultBuffers [][]byte, panmixer PanMixer, samplesLen 
 				maxLen = cdata.SamplesLen
 			}
 			if len(cdata.Data) > 0 {
-				volMtx := cdata.Volume.Apply(panmixer.GetMixingMatrix(cdata.Pan)...)
-				data.Add(pos, cdata.Data, volMtx)
+				volMtx := panmixer.GetMixingMatrix(cdata.Pan).Apply(cdata.Volume)
+				data.Add(pos, &cdata.Data, volMtx)
 			}
 		}
 		pos += maxLen

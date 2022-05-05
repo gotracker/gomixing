@@ -9,9 +9,6 @@ import (
 	"github.com/gotracker/gomixing/volume"
 )
 
-// ChannelMixBuffer is a single channel's premixed volume data
-type ChannelMixBuffer volume.Matrix
-
 // SampleMixIn is the parameters for mixing in a sample into a MixBuffer
 type SampleMixIn struct {
 	Sample    sampling.Sampler
@@ -24,7 +21,7 @@ type SampleMixIn struct {
 // MixBuffer is a buffer of premixed volume data intended to
 // be eventually sent out to the sound output device after
 // conversion to the output format
-type MixBuffer []ChannelMixBuffer
+type MixBuffer []volume.Matrix
 
 // C returns a channel and a function that flushes any outstanding mix-ins and closes the channel
 func (m *MixBuffer) C() (chan<- SampleMixIn, func()) {
@@ -46,39 +43,35 @@ func (m *MixBuffer) C() (chan<- SampleMixIn, func()) {
 func (m *MixBuffer) MixInSample(d SampleMixIn) {
 	pos := d.MixPos
 	for i := 0; i < d.MixLen; i++ {
-		sdata := d.Sample.GetSample()
-		samp := sdata.ApplyInSitu(d.StaticVol)
-		mixed := d.VolMatrix.Apply(samp...)
-		for c, s := range mixed {
-			(*m)[c][pos] += s
-		}
+		dry := d.Sample.GetSample()
+		samp := dry.Apply(d.StaticVol)
+		mixed := d.VolMatrix.ApplyToMatrix(samp)
+		(*m)[pos].Accumulate(mixed)
 		pos++
 		d.Sample.Advance()
 	}
 }
 
 // Add will mix in another MixBuffer's data
-func (m *MixBuffer) Add(pos int, rhs MixBuffer, volMtx volume.Matrix) {
-	sdata := make(volume.Matrix, len(*m))
-	for i := 0; i < len(rhs[0]); i++ {
-		for c := 0; c < len(rhs); c++ {
-			sdata[c] = rhs[c][i]
-		}
-		sd := volMtx.Apply(sdata...)
-		for c, s := range sd {
-			(*m)[c][pos+i] += s
-		}
+func (m *MixBuffer) Add(pos int, rhs *MixBuffer, volMtx volume.Matrix) {
+	maxLen := len(*rhs)
+	for i := 0; i < maxLen; i++ {
+		out := volMtx.ApplyToMatrix(volume.Matrix((*rhs)[i]))
+		(*m)[pos+i].Accumulate(out)
 	}
 }
 
 // ToRenderData converts a mixbuffer into a byte stream intended to be
 // output to the output sound device
-func (m *MixBuffer) ToRenderData(samples int, bitsPerSample int, mixerVolume volume.Volume) []byte {
+func (m *MixBuffer) ToRenderData(samples int, bitsPerSample int, channels int, mixerVolume volume.Volume) []byte {
 	writer := &bytes.Buffer{}
-	for i := 0; i < samples; i++ {
-		for _, buf := range *m {
-			v := buf[i] * mixerVolume
-			val := v.ToSample(bitsPerSample)
+	writer.Grow(samples * ((bitsPerSample + 7) / 8) * channels)
+	for _, samp := range *m {
+		buf := samp.Apply(mixerVolume)
+		var d volume.StaticMatrix
+		buf.ToChannels(channels, d[:])
+		for i := 0; i < channels; i++ {
+			val := d[i].ToSample(bitsPerSample)
 			_ = binary.Write(writer, binary.LittleEndian, val) // lint
 		}
 	}
@@ -92,10 +85,12 @@ func (m *MixBuffer) ToIntStream(outputChannels int, samples int, bitsPerSample i
 	for c := range data {
 		data[c] = make([]int32, samples)
 	}
-	for i := 0; i < samples; i++ {
-		for c, buf := range *m {
-			v := buf[i] * mixerVolume
-			data[c][i] = v.ToIntSample(bitsPerSample)
+	for i, samp := range *m {
+		buf := samp.Apply(mixerVolume)
+		var d volume.StaticMatrix
+		buf.ToChannels(outputChannels, d[:])
+		for c := 0; c < outputChannels; c++ {
+			data[c][i] = d[c].ToIntSample(bitsPerSample)
 		}
 	}
 	return data
@@ -107,8 +102,9 @@ func (m *MixBuffer) ToRenderDataWithBufs(outBuffers [][]byte, samples int, bitsP
 	pos := 0
 	onum := 0
 	out := outBuffers[onum]
-	for i := 0; i < samples; i++ {
-		for _, buf := range *m {
+	for _, samp := range *m {
+		buf := samp.Apply(mixerVolume)
+		for c := 0; c < buf.Channels; c++ {
 			for pos >= len(out) {
 				onum++
 				if onum > len(outBuffers) {
@@ -117,8 +113,7 @@ func (m *MixBuffer) ToRenderDataWithBufs(outBuffers [][]byte, samples int, bitsP
 				out = outBuffers[onum]
 				pos = 0
 			}
-			v := buf[i] * mixerVolume
-			val := v.ToSample(bitsPerSample)
+			val := buf.StaticMatrix[c].ToSample(bitsPerSample)
 			switch d := val.(type) {
 			case int8:
 				out[pos] = uint8(d)
