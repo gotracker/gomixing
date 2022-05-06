@@ -3,7 +3,6 @@ package sampling
 import "github.com/gotracker/gomixing/volume"
 
 type sampler struct {
-	Sampler
 	ss     SampleStream
 	pos    Pos
 	period float32

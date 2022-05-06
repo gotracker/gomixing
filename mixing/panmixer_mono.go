@@ -8,7 +8,7 @@ import (
 // PanMixerMono is a mixer that's specialized for mixing monaural audio content
 var PanMixerMono PanMixer = &panMixerMono{}
 
-type panMixerMono volume.Matrix
+type panMixerMono struct{}
 
 func (p panMixerMono) GetMixingMatrix(pan panning.Position) volume.Matrix {
 	// distance and angle are ignored on mono
@@ -19,5 +19,5 @@ func (p panMixerMono) GetMixingMatrix(pan panning.Position) volume.Matrix {
 }
 
 func (p panMixerMono) NumChannels() int {
-	return p.Channels
+	return 1
 }

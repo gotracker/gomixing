@@ -10,7 +10,7 @@ import (
 // PanMixerQuad is a mixer that's specialized for mixing quadraphonic audio content
 var PanMixerQuad PanMixer = &panMixerQuad{}
 
-type panMixerQuad volume.Matrix
+type panMixerQuad struct{}
 
 func (p panMixerQuad) GetMixingMatrix(pan panning.Position) volume.Matrix {
 	pangle := float64(pan.Angle)
@@ -31,5 +31,5 @@ func (p panMixerQuad) GetMixingMatrix(pan panning.Position) volume.Matrix {
 }
 
 func (p panMixerQuad) NumChannels() int {
-	return p.Channels
+	return 4
 }

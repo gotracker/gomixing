@@ -8,70 +8,45 @@ type Matrix struct {
 
 // Apply takes a volume matrix and multiplies it by incoming volumes
 func (m Matrix) ApplyToMatrix(mtx Matrix) Matrix {
+	if mtx.Channels == 0 {
+		return m
+	}
+
 	if m.Channels == mtx.Channels {
 		// simple straight-through
-		out := Matrix{
-			Channels: m.Channels,
-		}
 		for i := 0; i < m.Channels; i++ {
-			out.StaticMatrix[i] = mtx.StaticMatrix[i].ApplySingle(m.StaticMatrix[i])
+			m.StaticMatrix[i] = mtx.StaticMatrix[i].ApplySingle(m.StaticMatrix[i])
 		}
-		return out
+		return m
 	}
 
 	// more complex applications follow...
 
 	if mtx.Channels == 1 {
 		// right (mtx) is mono, so just do direct mono application
-		return m.Apply(m.StaticMatrix[0])
+		return m.Apply(mtx.StaticMatrix[0])
 	}
 
-	out := Matrix{
-		Channels: m.Channels,
-	}
-
-	switch m.Channels {
-	case 1:
-		// left (m) is mono, so do indirect mono application
-		mo := mtx.AsMono()
-		out.StaticMatrix[0] = m.StaticMatrix[0].ApplySingle(mo[0])
-		return out
-	case 2:
-		// left (m) is stereo, so do indirect stereo application
-		st := mtx.AsStereo()
-		out.StaticMatrix[0] = m.StaticMatrix[0].ApplySingle(st[0])
-		out.StaticMatrix[1] = m.StaticMatrix[1].ApplySingle(st[1])
-	case 4:
-		// left (m) is quad, so do indirect quad application
-		qu := mtx.AsQuad()
-		out.StaticMatrix[0] = m.StaticMatrix[0].ApplySingle(qu[0])
-		out.StaticMatrix[1] = m.StaticMatrix[1].ApplySingle(qu[1])
-		out.StaticMatrix[2] = m.StaticMatrix[2].ApplySingle(qu[2])
-		out.StaticMatrix[3] = m.StaticMatrix[3].ApplySingle(qu[3])
-	}
-	return out
+	// NOTE: recursive
+	return m.ApplyToMatrix(mtx.ToChannels(m.Channels))
 }
 
 func (m Matrix) Apply(vol Volume) Matrix {
-	var out Matrix
-	out.Channels = m.Channels
 	for i := 0; i < m.Channels; i++ {
-		out.StaticMatrix[i] = vol.ApplySingle(m.StaticMatrix[i])
+		m.StaticMatrix[i] = vol.ApplySingle(m.StaticMatrix[i])
 	}
-	return out
+	return m
 }
 
 func (m *Matrix) Accumulate(in Matrix) {
 	if m.Channels == 0 {
-		m.Channels = in.Channels
-		copy(m.StaticMatrix[:m.Channels], in.StaticMatrix[:m.Channels])
+		*m = in
 		return
 	}
 
-	var dry StaticMatrix
-	in.ToChannels(m.Channels, dry[:])
+	dry := in.ToChannels(m.Channels)
 	for i := 0; i < m.Channels; i++ {
-		m.StaticMatrix[i] += dry[i]
+		m.StaticMatrix[i] += dry.StaticMatrix[i]
 	}
 }
 
@@ -82,24 +57,20 @@ func (m *Matrix) Assign(channels int, data []Volume) {
 	}
 }
 
-func (m Matrix) ToChannels(channels int, out []Volume) {
+func (m Matrix) ToChannels(channels int) Matrix {
 	if m.Channels == channels {
-		copy(out, m.StaticMatrix[0:channels])
-		return
+		return m
 	}
 
 	switch channels {
-	default:
-		copy(out, m.StaticMatrix[0:channels])
 	case 1:
-		mo := m.AsMono()
-		copy(out, mo[:])
+		return m.AsMono()
 	case 2:
-		st := m.AsStereo()
-		copy(out, st[:])
+		return m.AsStereo()
 	case 4:
-		qu := m.AsQuad()
-		copy(out, qu[:])
+		return m.AsQuad()
+	default:
+		return Matrix{}
 	}
 }
 
@@ -120,34 +91,74 @@ func (m Matrix) Get(ch int) Volume {
 	return m.StaticMatrix[ch]
 }
 
-func (m Matrix) AsMono() [1]Volume {
-	var out [1]Volume
-	if m.Channels == 1 {
-		out[0] = m.StaticMatrix[0]
-	} else {
-		out[0] = m.Sum() / Volume(m.Channels)
+func (m Matrix) AsMono() Matrix {
+	switch m.Channels {
+	case 0:
+		return Matrix{}
+	case 1:
+		return m
+	default:
+		return Matrix{
+			StaticMatrix: StaticMatrix{m.Sum() / Volume(m.Channels)},
+			Channels:     1,
+		}
+	}
+}
+
+func (m Matrix) AsStereo() Matrix {
+	switch m.Channels {
+	case 0:
+		return Matrix{}
+	case 1:
+		return Matrix{
+			StaticMatrix: StaticMatrix{m.StaticMatrix[0], m.StaticMatrix[0]},
+			Channels:     2,
+		}
+	case 2:
+		return m
+	case 4:
+		return Matrix{
+			StaticMatrix: StaticMatrix{(m.StaticMatrix[0] + m.StaticMatrix[2]) / 2.0, (m.StaticMatrix[1] + m.StaticMatrix[3]) / 2.0},
+			Channels:     2,
+		}
+	default:
+		return Matrix{}
+	}
+}
+
+func (m Matrix) AsQuad() Matrix {
+	switch m.Channels {
+	case 0:
+		return Matrix{}
+	case 1:
+		return Matrix{
+			StaticMatrix: StaticMatrix{m.StaticMatrix[0], m.StaticMatrix[0], m.StaticMatrix[0], m.StaticMatrix[0]},
+			Channels:     4,
+		}
+	case 2:
+		return Matrix{
+			StaticMatrix: StaticMatrix{m.StaticMatrix[0], m.StaticMatrix[1], m.StaticMatrix[0], m.StaticMatrix[1]},
+			Channels:     4,
+		}
+	case 4:
+		return m
+	default:
+		return Matrix{}
+	}
+}
+
+func (m Matrix) Lerp(other Matrix, t float32) Matrix {
+	if other.Channels == 0 || t <= 0 {
+		return m
+	}
+
+	out := other.ToChannels(m.Channels)
+
+	// lerp between m and v
+	for c := 0; c < m.Channels; c++ {
+		a := m.StaticMatrix[c]
+		b := out.StaticMatrix[c]
+		out.StaticMatrix[c] = a + Volume(t)*(b-a)
 	}
 	return out
-}
-
-func (m Matrix) AsStereo() [2]Volume {
-	switch m.Channels {
-	case 1:
-		return [2]Volume{m.StaticMatrix[0], m.StaticMatrix[0]}
-	case 2:
-		return [2]Volume{m.StaticMatrix[0], m.StaticMatrix[1]}
-	default:
-		return [2]Volume{(m.StaticMatrix[0] + m.StaticMatrix[2]) / 2.0, (m.StaticMatrix[1] + m.StaticMatrix[3]) / 2.0}
-	}
-}
-
-func (m Matrix) AsQuad() [4]Volume {
-	switch m.Channels {
-	case 1:
-		return [4]Volume{m.StaticMatrix[0], m.StaticMatrix[0], m.StaticMatrix[0], m.StaticMatrix[0]}
-	case 2:
-		return [4]Volume{m.StaticMatrix[0], m.StaticMatrix[1], m.StaticMatrix[0], m.StaticMatrix[1]}
-	default:
-		return [4]Volume{m.StaticMatrix[0], m.StaticMatrix[1], m.StaticMatrix[2], m.StaticMatrix[3]}
-	}
 }

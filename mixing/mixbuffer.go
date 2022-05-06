@@ -56,7 +56,7 @@ func (m *MixBuffer) MixInSample(d SampleMixIn) {
 func (m *MixBuffer) Add(pos int, rhs *MixBuffer, volMtx volume.Matrix) {
 	maxLen := len(*rhs)
 	for i := 0; i < maxLen; i++ {
-		out := volMtx.ApplyToMatrix(volume.Matrix((*rhs)[i]))
+		out := volMtx.ApplyToMatrix((*rhs)[i])
 		(*m)[pos+i].Accumulate(out)
 	}
 }
@@ -68,10 +68,9 @@ func (m *MixBuffer) ToRenderData(samples int, bitsPerSample int, channels int, m
 	writer.Grow(samples * ((bitsPerSample + 7) / 8) * channels)
 	for _, samp := range *m {
 		buf := samp.Apply(mixerVolume)
-		var d volume.StaticMatrix
-		buf.ToChannels(channels, d[:])
+		d := buf.ToChannels(channels)
 		for i := 0; i < channels; i++ {
-			val := d[i].ToSample(bitsPerSample)
+			val := d.StaticMatrix[i].ToSample(bitsPerSample)
 			_ = binary.Write(writer, binary.LittleEndian, val) // lint
 		}
 	}
@@ -87,10 +86,9 @@ func (m *MixBuffer) ToIntStream(outputChannels int, samples int, bitsPerSample i
 	}
 	for i, samp := range *m {
 		buf := samp.Apply(mixerVolume)
-		var d volume.StaticMatrix
-		buf.ToChannels(outputChannels, d[:])
+		d := buf.ToChannels(outputChannels)
 		for c := 0; c < outputChannels; c++ {
-			data[c][i] = d[c].ToIntSample(bitsPerSample)
+			data[c][i] = d.StaticMatrix[c].ToIntSample(bitsPerSample)
 		}
 	}
 	return data

@@ -10,7 +10,7 @@ import (
 // PanMixerStereo is a mixer that's specialized for mixing stereo audio content
 var PanMixerStereo PanMixer = &panMixerStereo{}
 
-type panMixerStereo volume.Matrix
+type panMixerStereo struct{}
 
 func (p panMixerStereo) GetMixingMatrix(pan panning.Position) volume.Matrix {
 	pangle := float64(pan.Angle)
@@ -28,5 +28,5 @@ func (p panMixerStereo) GetMixingMatrix(pan panning.Position) volume.Matrix {
 }
 
 func (p panMixerStereo) NumChannels() int {
-	return p.Channels
+	return 2
 }
