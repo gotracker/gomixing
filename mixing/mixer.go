@@ -24,16 +24,14 @@ func GetDefaultMixerVolume(numMixedChannels int) volume.Volume {
 func (m *Mixer) Flatten(panmixer PanMixer, samplesLen int, row []ChannelData, mixerVolume volume.Volume) []byte {
 	data := m.NewMixBuffer(samplesLen)
 	for _, rdata := range row {
-		pos := 0
 		for _, cdata := range rdata {
 			if cdata.Flush != nil {
 				cdata.Flush()
 			}
 			if len(cdata.Data) > 0 {
 				volMtx := panmixer.GetMixingMatrix(cdata.Pan).Apply(cdata.Volume)
-				data.Add(pos, &cdata.Data, volMtx)
+				data.Add(cdata.Pos, &cdata.Data, volMtx)
 			}
-			pos += cdata.SamplesLen
 		}
 	}
 	return data.ToRenderData(samplesLen, m.BitsPerSample, m.Channels, mixerVolume)
@@ -44,16 +42,14 @@ func (m *Mixer) Flatten(panmixer PanMixer, samplesLen int, row []ChannelData, mi
 func (m *Mixer) FlattenToInts(panmixer PanMixer, samplesLen int, row []ChannelData, mixerVolume volume.Volume) [][]int32 {
 	data := m.NewMixBuffer(samplesLen)
 	for _, rdata := range row {
-		pos := 0
 		for _, cdata := range rdata {
 			if cdata.Flush != nil {
 				cdata.Flush()
 			}
 			if len(cdata.Data) > 0 {
 				volMtx := panmixer.GetMixingMatrix(cdata.Pan).Apply(cdata.Volume)
-				data.Add(pos, &cdata.Data, volMtx)
+				data.Add(cdata.Pos, &cdata.Data, volMtx)
 			}
-			pos += cdata.SamplesLen
 		}
 	}
 	return data.ToIntStream(panmixer.NumChannels(), samplesLen, m.BitsPerSample, mixerVolume)
@@ -63,21 +59,15 @@ func (m *Mixer) FlattenToInts(panmixer PanMixer, samplesLen int, row []ChannelDa
 func (m *Mixer) FlattenTo(resultBuffers [][]byte, panmixer PanMixer, samplesLen int, row []ChannelData, mixerVolume volume.Volume) {
 	data := m.NewMixBuffer(samplesLen)
 	for _, rdata := range row {
-		pos := 0
-		maxLen := 0
 		for _, cdata := range rdata {
 			if cdata.Flush != nil {
 				cdata.Flush()
 			}
-			if maxLen < cdata.SamplesLen {
-				maxLen = cdata.SamplesLen
-			}
 			if len(cdata.Data) > 0 {
 				volMtx := panmixer.GetMixingMatrix(cdata.Pan).Apply(cdata.Volume)
-				data.Add(pos, &cdata.Data, volMtx)
+				data.Add(cdata.Pos, &cdata.Data, volMtx)
 			}
 		}
-		pos += maxLen
 	}
 	data.ToRenderDataWithBufs(resultBuffers, samplesLen, m.BitsPerSample, mixerVolume)
 }

@@ -10,6 +10,7 @@ type Data struct {
 	Data       MixBuffer
 	Pan        panning.Position
 	Volume     volume.Volume
+	Pos        int
 	SamplesLen int
 	Flush      func()
 }
