@@ -2,7 +2,6 @@ package mixing
 
 import (
 	"bytes"
-	"encoding/binary"
 	"time"
 
 	"github.com/gotracker/gomixing/sampling"
@@ -63,15 +62,14 @@ func (m *MixBuffer) Add(pos int, rhs *MixBuffer, volMtx volume.Matrix) {
 
 // ToRenderData converts a mixbuffer into a byte stream intended to be
 // output to the output sound device
-func (m *MixBuffer) ToRenderData(samples int, bitsPerSample int, channels int, mixerVolume volume.Volume) []byte {
+func (m *MixBuffer) ToRenderData(samples int, channels int, mixerVolume volume.Volume, formatter sampling.Formatter) []byte {
 	writer := &bytes.Buffer{}
-	writer.Grow(samples * ((bitsPerSample + 7) / 8) * channels)
+	writer.Grow(samples * ((formatter.Size() + 7) / 8) * channels)
 	for _, samp := range *m {
 		buf := samp.Apply(mixerVolume)
 		d := buf.ToChannels(channels)
 		for i := 0; i < channels; i++ {
-			val := d.StaticMatrix[i].ToSample(bitsPerSample)
-			_ = binary.Write(writer, binary.LittleEndian, val) // lint
+			_ = formatter.Write(writer, d.StaticMatrix[i]) // lint
 		}
 	}
 	return writer.Bytes()
@@ -96,7 +94,7 @@ func (m *MixBuffer) ToIntStream(outputChannels int, samples int, bitsPerSample i
 
 // ToRenderDataWithBufs converts a mixbuffer into a byte stream intended to be
 // output to the output sound device
-func (m *MixBuffer) ToRenderDataWithBufs(outBuffers [][]byte, samples int, bitsPerSample int, mixerVolume volume.Volume) {
+func (m *MixBuffer) ToRenderDataWithBufs(outBuffers [][]byte, samples int, mixerVolume volume.Volume, formatter sampling.Formatter) {
 	pos := 0
 	onum := 0
 	out := outBuffers[onum]
@@ -111,22 +109,8 @@ func (m *MixBuffer) ToRenderDataWithBufs(outBuffers [][]byte, samples int, bitsP
 				out = outBuffers[onum]
 				pos = 0
 			}
-			val := buf.StaticMatrix[c].ToSample(bitsPerSample)
-			switch d := val.(type) {
-			case int8:
-				out[pos] = uint8(d)
-				pos++
-			case int16:
-				binary.LittleEndian.PutUint16(out[pos:], uint16(d))
-				pos += 2
-			case int32:
-				binary.LittleEndian.PutUint32(out[pos:], uint32(d))
-				pos += 4
-			default:
-				writer := &bytes.Buffer{}
-				_ = binary.Write(writer, binary.LittleEndian, val) // lint
-				pos += copy(out[pos:], writer.Bytes())
-			}
+			_ = formatter.WriteAt(out, int64(pos), buf.StaticMatrix[c]) // lint
+			pos += formatter.Size()
 		}
 	}
 }

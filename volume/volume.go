@@ -21,7 +21,7 @@ type Int24 struct {
 
 // ToSample returns a volume as a typed value supporting the bits per sample provided
 func (v Volume) ToSample(bitsPerSample int) interface{} {
-	val := v.withOverflowProtection()
+	val := v.WithOverflowProtection()
 	switch bitsPerSample {
 	case 8:
 		return int8(val * 128.0)
@@ -38,7 +38,7 @@ func (v Volume) ToSample(bitsPerSample int) interface{} {
 
 // ToIntSample returns a volume as an int32 value ranged to the bits per sample provided
 func (v Volume) ToIntSample(bitsPerSample int) int32 {
-	val := v.withOverflowProtection()
+	val := v.WithOverflowProtection()
 	switch bitsPerSample {
 	case 8:
 		return int32(val * 128.0)
@@ -48,6 +48,22 @@ func (v Volume) ToIntSample(bitsPerSample int) int32 {
 		return int32(val * 8388608.0)
 	case 32:
 		return int32(val * 2147483648.0)
+	}
+	return 0
+}
+
+// ToUintSample returns a volume as a uint32 value ranged to the bits per sample provided
+func (v Volume) ToUintSample(bitsPerSample int) uint32 {
+	val := v.WithOverflowProtection()
+	switch bitsPerSample {
+	case 8:
+		return uint32(val*float64(math.MaxInt8)) ^ 0x80
+	case 16:
+		return uint32(val*float64(math.MaxInt16)) ^ 0x8000
+	case 24:
+		return uint32(val*8388608.0) ^ 0x800000
+	case 32:
+		return uint32(val*float64(math.MaxInt32)) ^ 0x80000000
 	}
 	return 0
 }
@@ -66,7 +82,7 @@ func (v Volume) ApplyMultiple(samp []Volume) []Volume {
 	return vols
 }
 
-func (v Volume) withOverflowProtection() float64 {
+func (v Volume) WithOverflowProtection() float64 {
 	val := float64(v)
 	if math.Abs(val) <= 1.0 {
 		// likely case
