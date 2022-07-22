@@ -7,8 +7,7 @@ import (
 
 // Mixer is a manager for mixing multiple single- and multi-channel samples into a single multi-channel output stream
 type Mixer struct {
-	Channels      int
-	BitsPerSample int
+	Channels int
 }
 
 // NewMixBuffer returns a mixer buffer with a number of channels
@@ -42,8 +41,8 @@ func (m Mixer) Flatten(panmixer PanMixer, samplesLen int, row []ChannelData, mix
 }
 
 // FlattenToInts runs a flatten on the channel data into separate channel data of int32 variety
-// these int32s still respect the BitsPerSample size
-func (m Mixer) FlattenToInts(panmixer PanMixer, samplesLen int, row []ChannelData, mixerVolume volume.Volume) [][]int32 {
+// these int32s still respect the bitsPerSample size
+func (m Mixer) FlattenToInts(panmixer PanMixer, samplesLen, bitsPerSample int, row []ChannelData, mixerVolume volume.Volume) [][]int32 {
 	data := m.NewMixBuffer(samplesLen)
 	for _, rdata := range row {
 		for _, cdata := range rdata {
@@ -56,7 +55,7 @@ func (m Mixer) FlattenToInts(panmixer PanMixer, samplesLen int, row []ChannelDat
 			}
 		}
 	}
-	return data.ToIntStream(panmixer.NumChannels(), samplesLen, m.BitsPerSample, mixerVolume)
+	return data.ToIntStream(panmixer.NumChannels(), samplesLen, bitsPerSample, mixerVolume)
 }
 
 // FlattenTo will to a final saturation mix of all the row's channel data into a single output buffer
