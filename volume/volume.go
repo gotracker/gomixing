@@ -1,6 +1,7 @@
 package volume
 
 import (
+	"fmt"
 	"math"
 )
 
@@ -93,4 +94,14 @@ func (v Volume) WithOverflowProtection() float64 {
 	}
 	// overflow, positive
 	return 1.0
+}
+
+func (v Volume) String() string {
+	var db float64
+	if v > 0 {
+		db = math.Log10(float64(v)) * 20.0
+	} else {
+		db = math.Inf(-1)
+	}
+	return fmt.Sprintf("%0.2f (%0.2fdB)", v, db)
 }
